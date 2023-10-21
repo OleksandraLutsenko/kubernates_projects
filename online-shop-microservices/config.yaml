@@ -1,0 +1,725 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  emailservice
+  namespace: default
+  labels:
+    app:  emailservice
+spec:
+  selector:
+    matchLabels:
+      app: emailservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  emailservice
+    spec:
+      # initContainers:
+        # Init containers are exactly like regular containers, except:
+          # - Init containers always run to completion.
+          # - Each init container must complete successfully before the next one starts.
+      containers:
+      - name:  emailservice
+        image: gcr.io/google-samples/microservices-demo/emailservice:v0.8.0
+        env:
+        - name: PORT
+          value: "8080"
+        ports:
+        - containerPort:  8080
+          name:  service
+        readinessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
+        livenessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emailservice
+  namespace: default
+spec:
+  selector:
+    app: emailservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  recommendationservice
+  namespace: default
+  labels:
+    app:  recommendationservice
+spec:
+  selector:
+    matchLabels:
+      app: recommendationservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  recommendationservice
+    spec:
+      # initContainers:
+        # Init containers are exactly like regular containers, except:
+          # - Init containers always run to completion.
+          # - Each init container must complete successfully before the next one starts.
+      containers:
+      - name:  recommendationservice
+        image:  gcr.io/google-samples/microservices-demo/recommendationservice:v0.8.0
+        env:
+        - name: PORT
+          value: "8080"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "productcatalogservice:3550"
+        ports:
+        - containerPort:  8080
+        readinessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
+        livenessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
+        resources:
+          requests:
+            cpu: 100m
+            memory: 220Mi
+          limits:
+            cpu: 200m
+            memory: 450Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendationservice
+  namespace: default
+spec:
+  selector:
+    app: recommendationservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  productcatalogservice
+  namespace: default
+  labels:
+    app:  productcatalogservice
+spec:
+  selector:
+    matchLabels:
+      app: productcatalogservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  productcatalogservice
+    spec:
+      containers:
+      - name:  productcatalogservice
+        image:  gcr.io/google-samples/microservices-demo/productcatalogservice:v0.8.0
+        env:
+        - name: PORT
+          value: "3550"
+        ports:
+        - containerPort:  3550
+        readinessProbe:
+          grpc:
+            port: 3550
+        livenessProbe:
+          grpc:
+            port: 3550
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productcatalogservice
+  namespace: default
+spec:
+  selector:
+    app: productcatalogservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 3550
+    targetPort: 3550
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentservice
+spec:
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: server
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        image: gcr.io/google-samples/microservices-demo/paymentservice:v0.8.0
+        ports:
+        - containerPort: 50051
+        env:
+        - name: PORT
+          value: "50051"
+        - name: DISABLE_PROFILER
+          value: "1"
+        - name: ProjectID
+          value: "My_project"
+        readinessProbe:
+          grpc:
+            port: 50051
+        livenessProbe:
+          grpc:
+            port: 50051
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymentservice
+spec:
+  type: ClusterIP
+  selector:
+    app: paymentservice
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  currencyservice
+  namespace: default
+  labels:
+    app:  currencyservice
+spec:
+  selector:
+    matchLabels:
+      app: currencyservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  currencyservice
+    spec:
+      containers:
+      - name:  currencyservice
+        image:  gcr.io/google-samples/microservices-demo/currencyservice:v0.8.0
+        env:
+        - name: PORT
+          value: "7000"
+        ports:
+        - containerPort:  7000
+        readinessProbe:
+          grpc:
+            port: 7000
+        livenessProbe:
+          grpc:
+            port: 7000
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: currencyservice
+  namespace: default
+spec:
+  selector:
+    app: currencyservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 7000
+    targetPort: 7000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  shippingservice
+  namespace: default
+  labels:
+    app:  shippingservice
+spec:
+  selector:
+    matchLabels:
+      app: shippingservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  shippingservice
+    spec:
+      containers:
+      - name:  shippingservice
+        image:  gcr.io/google-samples/microservices-demo/shippingservice:v0.8.0
+        env:
+        - name: PORT
+          value: "50051"
+        ports:
+        - containerPort: 50051
+        readinessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 50051
+        livenessProbe:
+          grpc:
+            port: 50051
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shippingservice
+  namespace: default
+spec:
+  selector:
+    app: shippingservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 50051
+    targetPort: 50051
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  adservice
+  namespace: default
+  labels:
+    app:  adservice
+spec:
+  selector:
+    matchLabels:
+      app: adservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  adservice
+    spec:
+      containers:
+      - name:  adservice
+        image:  gcr.io/google-samples/microservices-demo/adservice:v0.8.0
+        env:
+        - name: PORT
+          value: "9555"
+        ports:
+        - containerPort:  9555
+        readinessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          grpc:
+            port: 9555
+        livenessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          grpc:
+            port: 9555
+        resources:
+          requests:
+            cpu: 200m
+            memory: 180Mi
+          limits:
+            cpu: 300m
+            memory: 300Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adservice
+  namespace: default
+spec:
+  selector:
+    app: adservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 9555
+    targetPort: 9555
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  cartservice
+  namespace: default
+  labels:
+    app:  cartservice
+spec:
+  selector:
+    matchLabels:
+      app: cartservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  cartservice
+    spec:
+      containers:
+      - name:  cartservice
+        image:  gcr.io/google-samples/microservices-demo/cartservice:v0.8.0
+        env:
+        - name: PORT
+          value: "7070"
+        - name: REDIS_ADDR
+          value: "redis-cart:6379"
+        ports:
+        - containerPort:  7070
+        readinessProbe:
+          initialDelaySeconds: 15
+          grpc:
+            port: 7070
+        livenessProbe:
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          grpc:
+            port: 7070
+        resources:
+          requests:
+            cpu: 200m
+            memory: 64Mi
+          limits:
+            cpu: 300m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cartservice
+  namespace: default
+spec:
+  selector:
+    app: cartservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 7070
+    targetPort: 7070
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  redis-cart
+  namespace: default
+  labels:
+    app:  redis-cart
+spec:
+  selector:
+    matchLabels:
+      app: redis-cart
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  redis-cart
+    spec:
+      containers:
+      - name:  redis
+        image:  redis:alpine
+        ports:
+        - containerPort:  6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        readinessProbe:
+          periodSeconds: 5
+          tcpSocket:
+            port: 6379
+        livenessProbe:
+          periodSeconds: 5
+          tcpSocket:
+            port: 6379
+        resources:
+          limits:
+            memory: 256Mi
+            cpu: 125m
+          requests:
+            cpu: 70m
+            memory: 200Mi
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cart
+  namespace: default
+spec:
+  selector:
+    app: redis-cart
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkoutservice
+  namespace: default
+  labels:
+    app:  checkoutservice
+spec:
+  selector:
+    matchLabels:
+      app: checkoutservice
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  checkoutservice
+    spec:
+      containers:
+      - name:  checkoutservice
+        image:  gcr.io/google-samples/microservices-demo/checkoutservice:v0.8.0
+        env:
+        - name: PORT
+          value: "5050"
+        - name: SHIPPING_SERVICE_ADDR
+          value: "shippingservice:50051"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "productcatalogservice:3550"
+        - name: CART_SERVICE_ADDR
+          value: "cartservice:7070"
+        - name: CURRENCY_SERVICE_ADDR
+          value: "currencyservice:7000"
+        - name: EMAIL_SERVICE_ADDR
+          value: "emailservice:5000"
+        - name: PAYMENT_SERVICE_ADDR
+          value: "paymentservice:50051"
+        ports:
+        - containerPort:  5050
+        readinessProbe:
+            grpc:
+              port: 5050
+        livenessProbe:
+            grpc:
+              port: 5050
+        resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkoutservice
+  namespace: default
+spec:
+  selector:
+    app: checkoutservice
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 5050
+    targetPort: 5050
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  frontend
+  namespace: default
+  labels:
+    app:  frontend
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app:  frontend
+    spec:
+      containers:
+      - name:  frontend
+        image:  gcr.io/google-samples/microservices-demo/frontend:v0.8.0
+        env:
+        - name: PORT
+          value: "8080"
+        - name: SHIPPING_SERVICE_ADDR
+          value: "shippingservice:50051"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "productcatalogservice:3550"
+        - name: CART_SERVICE_ADDR
+          value: "cartservice:7070"
+        - name: CURRENCY_SERVICE_ADDR
+          value: "currencyservice:7000"
+        - name: RECOMMENDATION_SERVICE_ADDR
+          value: "recommendationservice:8080"
+        - name: CHECKOUT_SERVICE_ADDR
+          value: "checkoutservice:5050"
+        - name: AD_SERVICE_ADDR
+          value: "adservice:9555"
+        ports:
+        - containerPort:  8080
+        readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: "/_healthz"
+              port: 8080
+              httpHeaders:
+              - name: "Cookie"
+                value: "shop_session-id=x-readiness-probe"
+        livenessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: "/_healthz"
+              port: 8080
+              httpHeaders:
+              - name: "Cookie"
+                value: "shop_session-id=x-liveness-probe"
+        resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: default
+spec:
+  selector:
+    app: frontend
+  type: NodePort
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+    nodePort: 30007
